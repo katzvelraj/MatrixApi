@@ -17,6 +17,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -47,6 +48,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvTravelInfo;
     private String[] cities;
 
+    List<String> citiList = new ArrayList<>();
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,6 +77,14 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+
+        Button button = (Button) findViewById(R.id.btn);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
 
             }
         });
@@ -109,6 +122,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void getDistanceInfo(String origin, String destination) {
         // http://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=Washington,DC&destinations=New+York+City,NY
+
+
         Map<String, String> mapQuery = new HashMap<>();
         mapQuery.put("units", "imperial");
         mapQuery.put("origins", origin);
@@ -153,11 +168,11 @@ public class MainActivity extends AppCompatActivity {
 
         HashMap<Long, String> stringHashMap = new HashMap<>();
         List<Long> dis = new ArrayList<>();
-        int shortestPos = 99999999;
 
         for (int i = 0; i < elements.size(); i++) {
             stringHashMap.put(Long.valueOf(elements.get(i).getDistance().getValue()),
                     cities[i]);
+
             dis.add(Long.valueOf(elements.get(i).getDistance().getValue()));
 
             if (shortest > elements.get(i).getDistance().getValue()) {
@@ -165,7 +180,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         Collections.sort(dis);
+
         ArrayList<LatLng> latLngs = new ArrayList<>();
+
         for (int i = 0; i < dis.size(); i++) {
 
             String latlng = stringHashMap.get(dis.get(i));
@@ -177,10 +194,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-        Type listType = new TypeToken<List<LatLng>>() {
-        }.getType();
-
-
+        Type listType = new TypeToken<List<LatLng>>() {}.getType();
         Gson gson = new Gson();
         String json = gson.toJson(latLngs, listType);
 
@@ -190,7 +204,6 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
 
 
-        List<String> target2 = gson.fromJson(json, listType);
         Toast.makeText(this, "shortest" + shortest + stringHashMap.get(shortest), Toast.LENGTH_SHORT).show();
     }
 
