@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Map Direction</string>
+
+    <string-array name="cities">
+        <item>9.167414, 77.876747</item>
+        <item>8.385437, 77.607224</item>
+        //tirunelveli
+        <item>8.174450, 77.432159</item>
+        //
+        <item>9.939093, 78.121719</item>
+        <item>9.167414, 77.876747</item>
+        <item>Las Vegas, NV</item>
+    </string-array>
+    <string name="title_activity_maps">Map</string>
+</resources>
