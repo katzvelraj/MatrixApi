@@ -5,8 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
+import android.location.Criteria;
 import android.location.Geocoder;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
@@ -31,6 +33,7 @@ import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,15 +45,13 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LocationListener {
 
     private Spinner spinnerCities;
     private TextView tvTravelInfo;
     private String[] cities;
-
-    List<String> citiList = new ArrayList<>();
-
-
+    ArrayList<String> stringArrayList = new ArrayList<>();
+    String origin = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,8 +71,8 @@ public class MainActivity extends AppCompatActivity {
         spinnerCities.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                Toast.makeText(getApplicationContext(), getAddress(cities[i]) + "", Toast.LENGTH_SHORT).show();
-                getDistanceInfo(getCurrentCoordinate(), cities[i]);
+                origin = cities[i];
+                getDistanceInfo(origin);
 
             }
 
@@ -81,13 +82,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button button = (Button) findViewById(R.id.btn);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-            }
-        });
 
 
         Log.d("MainActivity", "current coordinate: " + getCurrentCoordinate());
@@ -99,16 +93,66 @@ public class MainActivity extends AppCompatActivity {
         int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 100);
+            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 100);
 
             return null;
         }
+        Location location = null;
+        try {
 
-        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        Location location = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            LocationManager locationManager = (LocationManager) getApplicationContext()
+                    .getSystemService(LOCATION_SERVICE);
 
-//        Criteria criteria = new Criteria();
-//        String bestProvider = lm.getBestProvider(criteria, false);
-//        Location location = lm.getLastKnownLocation(bestProvider);
+            // getting GPS status
+            boolean isGPSEnabled = locationManager
+                    .isProviderEnabled(LocationManager.GPS_PROVIDER);
+
+            // getting network status
+            boolean isNetworkEnabled = locationManager
+                    .isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+            if (!isGPSEnabled && !isNetworkEnabled) {
+                // no network provider is enabled
+            } else {
+                // this.canGetLocation = true;
+                if (isNetworkEnabled) {
+                    locationManager.requestLocationUpdates(
+                            LocationManager.NETWORK_PROVIDER,
+                            58888888,
+                            29.0f, (LocationListener) MainActivity.this);
+                    Log.d("Network", "Network Enabled");
+                    if (locationManager != null) {
+                        location = locationManager
+                                .getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                        if (location != null) {
+                            double latitude = location.getLatitude();
+                            double longitude = location.getLongitude();
+                        }
+                    }
+                }
+                // if GPS Enabled get lat/long using GPS Services
+                if (isGPSEnabled) {
+                    if (location == null) {
+                        locationManager.requestLocationUpdates(
+                                LocationManager.GPS_PROVIDER,
+                                1222,
+                                33.00f, (LocationListener) MainActivity.this);
+                        Log.d("GPS", "GPS Enabled");
+                        if (locationManager != null) {
+                            location = locationManager
+                                    .getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                            if (location != null) {
+                                double latitude = location.getLatitude();
+                                double longitude = location.getLongitude();
+                            }
+                        }
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         return location;
     }
@@ -120,15 +164,52 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void getDistanceInfo(String origin, String destination) {
-        // http://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=Washington,DC&destinations=New+York+City,NY
+    public LatLng getLocationFromAddress(String strAddress) {
 
+        Geocoder coder = new Geocoder(this);
+        List<Address> address;
+        LatLng p1 = null;
 
+        try {
+            address = coder.getFromLocationName(strAddress, 5);
+            if (address == null) {
+                return null;
+            }
+            Address location = address.get(0);
+            location.getLatitude();
+            location.getLongitude();
+
+            p1 = new LatLng((location.getLatitude()),
+                    (location.getLongitude()));
+
+            return p1;
+        } catch (Exception e) {
+
+        }
+        return p1;
+    }
+
+    private void getDistanceInfo(String origin) {
+        stringArrayList.clear();
         Map<String, String> mapQuery = new HashMap<>();
         mapQuery.put("units", "imperial");
         mapQuery.put("origins", origin);
-        mapQuery.put("destinations", destination + "|" + cities[1] + "|" + cities[2]
-                + "|" + cities[3] + "|" + cities[4]);
+        StringBuilder des = new StringBuilder();
+
+        for (int i = 0; i < cities.length; i++) {
+
+
+            if (!cities[i].equalsIgnoreCase(origin)) {
+
+                if (i == cities.length - 1) {
+                    des.append(cities[i]);
+                } else {
+                    des.append(cities[i] + "|");
+                }
+                stringArrayList.add(cities[i]);
+            }
+        }
+        mapQuery.put("destinations", des.toString());
 //        mapQuery.put("destinations[1]", cities[1]);
 //        mapQuery.put("destinations[2]", cities[2]);
         DistanceApiClient client = RestUtil.getInstance().getRetrofit().create(DistanceApiClient.class);
@@ -150,7 +231,7 @@ public class MainActivity extends AppCompatActivity {
 
                     Element element = response.body().getRows().get(0).getElements().get(0);
                     showTravelDistance(element.getDistance().getText() + "\n" + element.getDuration().getText());
-                    findShortestDistance(response.body().getRows().get(0).getElements(), response.body().getDestinationAddresses());
+                    findShortestDistance(response.body().getRows().get(0).getElements(), response.body().getDestinationAddresses(), response);
 
                 }
             }
@@ -162,21 +243,25 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void findShortestDistance(List<Element> elements, List<String> destinationAddresses) {
+    private void findShortestDistance(List<Element> elements, List<String> destinationAddresses, Response<DistanceResponse> response) {
         long shortest = 999999999;
 
-
-        HashMap<Long, String> stringHashMap = new HashMap<>();
+        //LatLng start = getLocationFromAddress(response.body().getDestinationAddresses().get(0));
+        HashMap<Long, Integer> stringHashMap = new HashMap<>();
+        HashMap<Long, String> placeMap = new HashMap<>();
         List<Long> dis = new ArrayList<>();
 
         for (int i = 0; i < elements.size(); i++) {
-            stringHashMap.put(Long.valueOf(elements.get(i).getDistance().getValue()),
-                    cities[i]);
 
-            dis.add(Long.valueOf(elements.get(i).getDistance().getValue()));
 
-            if (shortest > elements.get(i).getDistance().getValue()) {
-                shortest = elements.get(i).getDistance().getValue();
+            if (elements.get(i).getDistance() != null) {
+                stringHashMap.put(Long.valueOf(elements.get(i).getDistance().getValue()), i);
+                placeMap.put(Long.valueOf(elements.get(i).getDistance().getValue()), stringArrayList.get(i));
+                dis.add(Long.valueOf(elements.get(i).getDistance().getValue()));
+
+                if (shortest > elements.get(i).getDistance().getValue()) {
+                    shortest = elements.get(i).getDistance().getValue();
+                }
             }
         }
         Collections.sort(dis);
@@ -185,26 +270,34 @@ public class MainActivity extends AppCompatActivity {
 
         for (int i = 0; i < dis.size(); i++) {
 
-            String latlng = stringHashMap.get(dis.get(i));
+            String latlng = placeMap.get(dis.get(i));
             String[] latlong = latlng.split(",");
             double lat = Double.parseDouble(latlong[0]);
             double lng = Double.parseDouble(latlong[1]);
             LatLng lng1 = new LatLng(lat, lng);
             latLngs.add(lng1);
         }
+        String[] latlong = origin.split(",");
+        double lat = Double.parseDouble(latlong[0]);
+        double lng = Double.parseDouble(latlong[1]);
+        LatLng lng1 = new LatLng(lat, lng);
+        latLngs.add(0,lng1);
 
 
-        Type listType = new TypeToken<List<LatLng>>() {}.getType();
+
+        Type listType = new TypeToken<List<LatLng>>() {
+        }.getType();
         Gson gson = new Gson();
         String json = gson.toJson(latLngs, listType);
 
 
         Intent intent = new Intent(this, MapsActivity.class);
         intent.putExtra("LAT", json);
+        intent.putExtra("ORIGN",origin);
         startActivity(intent);
 
 
-        Toast.makeText(this, "shortest" + shortest + stringHashMap.get(shortest), Toast.LENGTH_SHORT).show();
+        // Toast.makeText(this, "shortest" + shortest + stringHashMap.get(shortest), Toast.LENGTH_SHORT).show();
     }
 
     private void showTravelDistance(String travelInfo) {
@@ -238,4 +331,23 @@ public class MainActivity extends AppCompatActivity {
         return city;
     }
 
+    @Override
+    public void onLocationChanged(Location location) {
+
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+
+    }
 }

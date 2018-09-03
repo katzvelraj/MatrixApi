@@ -8,7 +8,15 @@
         <item>8.174450, 77.432159</item>
         //
         <item>9.939093, 78.121719</item>
-        <item>9.167414, 77.876747</item>
+
+        <item>11.933117, 79.485616</item>
+        <item>9.6, 77.96667</item>
+        <!--<item>8.322418, 77.696204</item>-->
+        <item>9.45, 77.8</item>
+
+        <item> 8.269010199999999, 77.68653829999994</item>
+
+
     </string-array>
     <string name="title_activity_maps">Map</string>
 </resources>

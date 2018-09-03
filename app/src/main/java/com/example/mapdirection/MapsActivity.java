@@ -3,7 +3,16 @@ package com.example.mapdirection;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.AsyncTask;
@@ -19,6 +28,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -37,11 +47,13 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
     List<LatLng> latLngs;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,11 +88,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         mMap.addMarker(new MarkerOptions().position(getCurrentCoordinate()).title("Origin"));
         for (int i = 0; i < latLngs.size(); i++) {
-            mMap.addMarker(new MarkerOptions().position(latLngs.get(i)).title("Retailers"));
+            mMap.addMarker(new MarkerOptions().position(latLngs.get(i)).title(getAddress(latLngs.get(i))));
+
+            Bitmap bmp = GetBitmapMarker(
+                    this, String.valueOf(i + 1));
+            mMap.addMarker(new MarkerOptions()
+                    .position(latLngs.get(i))
+                    //.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker2))
+                    .icon(BitmapDescriptorFactory.fromBitmap(bmp))
+                    .title(getAddress(latLngs.get(i)))
+                    .anchor(0.5f, 1)
+            );
         }
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLngs.get(1), 8));
 // Getting URL to the Google Directions API
-        String url = getDirectionsUrl(getCurrentCoordinate(), latLngs.get(1));
+        String url = getDirectionsUrl(latLngs.get(0), latLngs.get(1));
 
         DownloadTask downloadTask = new DownloadTask();
 
@@ -88,6 +110,73 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         downloadTask.execute(url);
     }
 
+    private String getAddress(LatLng cities) {
+
+
+        Geocoder geocoder;
+        List<Address> addresses;
+        geocoder = new Geocoder(this, Locale.getDefault());
+        String city = "";
+        try {
+            addresses = geocoder.getFromLocation(cities.latitude, cities.longitude, 1); // Here 1 represent max location result to returned, by documents it recommended 1 to 5
+
+            String address = addresses.get(0).getAddressLine(0); // If any additional address line present than only, check with max available address lines by getMaxAddressLineIndex()
+            city = addresses.get(0).getLocality();
+            String state = addresses.get(0).getAdminArea();
+            String country = addresses.get(0).getCountryName();
+            String postalCode = addresses.get(0).getPostalCode();
+            String knownName = addresses.get(0).getFeatureName(); // On
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return city;
+    }
+
+
+    public Bitmap makeBitmap(Context context, String text) {
+        Resources resources = context.getResources();
+        float scale = resources.getDisplayMetrics().density;
+        Bitmap.Config conf = Bitmap.Config.ARGB_8888;
+        Bitmap bitmap = Bitmap.createBitmap(200, 50, conf);
+        bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+
+        Canvas canvas = new Canvas(bitmap);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.RED); // Text color
+        paint.setTextSize(14 * scale); // Text size
+        paint.setShadowLayer(1f, 0f, 1f, Color.WHITE); // Text shadow
+        Rect bounds = new Rect();
+        paint.getTextBounds(text, 0, text.length(), bounds);
+
+        int x = bitmap.getWidth() - bounds.width() - 10; // 10 for padding from right
+        int y = bounds.height();
+        canvas.drawText(text, x, y, paint);
+
+        return bitmap;
+    }
+
+    public Bitmap GetBitmapMarker(MapsActivity mapsActivity, String text)
+    {
+        Paint color = new Paint();
+        color.setTextSize(35);
+        color.setColor(Color.BLACK);
+
+
+
+        Bitmap mDotMarkerBitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+
+        Canvas canvas = new Canvas(mDotMarkerBitmap);
+        canvas.drawText(text, 30, 40, color);
+
+        Drawable shape = mapsActivity.getResources().getDrawable(R.drawable.shape_marker_red);
+
+        shape.setBounds(0, 0, mDotMarkerBitmap.getWidth(), mDotMarkerBitmap.getHeight());
+        shape.draw(canvas);
+
+        return mDotMarkerBitmap;
+    }
 
     private LatLng getCurrentCoordinate() {
         Location location = getCurrentLocation();
@@ -262,7 +351,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         return data;
     }
-
 
 
 }
